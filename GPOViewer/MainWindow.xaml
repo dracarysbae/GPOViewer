@@ -6,11 +6,11 @@
         <TabControl>
             <TabItem Header="GPO Overview">
                 <Grid>
-                    <DataGrid x:Name="GpoDataGrid" AutoGenerateColumns="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="10">
+                    <DataGrid x:Name="GpoDataGrid" AutoGenerateColumns="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="10" SelectionMode="Extended">
                         <DataGrid.Columns>
                             <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
                             <DataGridTextColumn Header="Last Modified" Binding="{Binding LastModified}" Width="200" />
-                            <DataGridTextColumn Header="Summary" Binding="{Binding Summary}" Width="*" />
+                            <DataGridTextColumn Header="Backup Path" Binding="{Binding BackupPath}" Width="*" />
                         </DataGrid.Columns>
                     </DataGrid>
                     <Button x:Name="RestoreButton" Content="Restore GPO" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10" Width="120" Click="RestoreButton_Click" />

@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.ServiceProcess;
 using System.Timers;
+using System.Xml.Linq; // XML işlemleri için
 
 namespace GPOMonitoringService
 {
@@ -10,6 +12,7 @@ namespace GPOMonitoringService
     {
         private Timer _timer;
         private readonly string _backupPath = @"C:\GPOBackups";
+        private readonly string _xmlPath = Path.Combine(@"C:\GPOBackups", "GPOBackupHistory.xml");
 
         public Service1()
         {
@@ -22,6 +25,13 @@ namespace GPOMonitoringService
             if (!Directory.Exists(_backupPath))
             {
                 Directory.CreateDirectory(_backupPath);
+            }
+
+            // XML dosyası oluşturulmadıysa oluştur
+            if (!File.Exists(_xmlPath))
+            {
+                var xdoc = new XDocument(new XElement("GPOBackups"));
+                xdoc.Save(_xmlPath);
             }
 
             // Timer başlat
@@ -62,7 +72,47 @@ namespace GPOMonitoringService
             // PowerShell komutunu çalıştırarak tüm GPO'ları yedekle
             var powershellCommand = $"Backup-GPO -All -Path \"{_backupPath}\"";
             ExecutePowerShellCommand(powershellCommand);
+
+            // Yedeklenen GPO'lar için XML dosyasını güncelle
+            UpdateBackupHistory();
+
             WriteLog("All GPOs backed up successfully.");
+        }
+
+        private void UpdateBackupHistory()
+        {
+            try
+            {
+                var xdoc = XDocument.Load(_xmlPath);
+
+                foreach (var folder in Directory.GetDirectories(_backupPath))
+                {
+                    var gpoName = Path.GetFileName(folder);
+                    var gpoBackupTime = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+
+                    // GPO için yeni bir kayıt oluştur veya mevcut olanı güncelle
+                    var existingGpo = xdoc.Descendants("Gpo").FirstOrDefault(gpo => gpo.Element("Name")?.Value == gpoName);
+
+                    if (existingGpo == null)
+                    {
+                        xdoc.Root.Add(new XElement("Gpo",
+                            new XElement("Name", gpoName),
+                            new XElement("LastModified", gpoBackupTime),
+                            new XElement("BackupPath", folder)));
+                    }
+                    else
+                    {
+                        existingGpo.Element("LastModified")?.SetValue(gpoBackupTime);
+                        existingGpo.Element("BackupPath")?.SetValue(folder);
+                    }
+                }
+
+                xdoc.Save(_xmlPath);
+            }
+            catch (Exception ex)
+            {
+                WriteLog($"Error updating XML: {ex.Message}");
+            }
         }
 
         private void ExecutePowerShellCommand(string command)

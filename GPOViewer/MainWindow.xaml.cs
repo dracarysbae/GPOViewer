@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
+using System.Xml.Linq;
 
 namespace GPOViewer
 {
@@ -27,7 +28,7 @@ namespace GPOViewer
         private ObservableCollection<GpoInfo> LoadGpos()
         {
             var gpoList = new ObservableCollection<GpoInfo>();
-            var backupDir = @"C:\GPOBackups";
+            var backupDir = @"C:\\GPOBackups";
 
             if (!Directory.Exists(backupDir))
             {
@@ -35,26 +36,27 @@ namespace GPOViewer
                 MessageBox.Show($"Backup directory not found. Created: {backupDir}", "Info", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-            foreach (var file in Directory.GetFiles(backupDir, "*.meta"))
+            var xmlFilePath = Path.Combine(backupDir, "GPOBackupHistory.xml");
+
+            if (File.Exists(xmlFilePath))
             {
                 try
                 {
-                    var metaContent = File.ReadAllLines(file);
-
-                    var lastModifiedRaw = metaContent[1].Split(new[] { ':' }, 2)[1].Trim();
-                    var lastModifiedFormatted = DateTime.Parse(lastModifiedRaw).ToString("dd.MM.yyyy HH:mm:ss");
-
-                    gpoList.Add(new GpoInfo
+                    var xdoc = XDocument.Load(xmlFilePath);
+                    foreach (var gpo in xdoc.Descendants("Gpo"))
                     {
-                        Name = metaContent[0].Split(new[] { ':' }, 2)[1].Trim(),
-                        LastModified = lastModifiedFormatted,
-                        Summary = metaContent[2].Split(new[] { ':' }, 2)[1].Trim(),
-                        BackupPath = file
-                    });
+                        gpoList.Add(new GpoInfo
+                        {
+                            Name = gpo.Element("Name")?.Value,
+                            LastModified = gpo.Element("LastModified")?.Value,
+                            Summary = gpo.Element("Summary")?.Value,
+                            BackupPath = gpo.Element("BackupPath")?.Value
+                        });
+                    }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show($"Error reading file {file}: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show($"Error reading XML: {ex.Message}", "Error", MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
 
@@ -65,11 +67,12 @@ namespace GPOViewer
         {
             if (GpoDataGrid.SelectedItem is GpoInfo selectedGpo)
             {
-                var restorePath = Path.Combine(@"C:\GPORestores", Path.GetFileName(selectedGpo.BackupPath));
+                var restoreDir = @"C:\\GPORestores";
+                var restorePath = Path.Combine(restoreDir, Path.GetFileName(selectedGpo.BackupPath));
 
                 try
                 {
-                    Directory.CreateDirectory(@"C:\GPORestores");
+                    Directory.CreateDirectory(restoreDir);
                     File.Copy(selectedGpo.BackupPath, restorePath, overwrite: true);
 
                     MessageBox.Show($"GPO restored to: {restorePath}", "Restore Complete", MessageBoxButton.OK, MessageBoxImage.Information);
