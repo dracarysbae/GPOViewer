@@ -5,6 +5,7 @@ using System.Linq;
 using System.ServiceProcess;
 using System.Timers;
 using System.Xml.Linq; // XML işlemleri için
+using GPMGMTLib; // GPMC Namespace
 
 namespace GPOMonitoringService
 {
@@ -12,7 +13,7 @@ namespace GPOMonitoringService
     {
         private Timer _timer;
         private readonly string _backupPath = @"C:\GPOBackups";
-        private readonly string _xmlPath = Path.Combine(@"C:\GPOBackups", "GPOBackupHistory.xml");
+        private readonly string _xmlPath = @"C:\GPOBackups\GPOBackupHistory.xml";
 
         public Service1()
         {
@@ -21,25 +22,24 @@ namespace GPOMonitoringService
 
         protected override void OnStart(string[] args)
         {
-            // Yedekleme dizini oluşturulmadıysa oluştur
+            // Create backup directory if it does not exist
             if (!Directory.Exists(_backupPath))
             {
                 Directory.CreateDirectory(_backupPath);
             }
 
-            // XML dosyası oluşturulmadıysa oluştur
+            // Create XML file if it does not exist
             if (!File.Exists(_xmlPath))
             {
                 var xdoc = new XDocument(new XElement("GPOBackups"));
                 xdoc.Save(_xmlPath);
             }
 
-            // Timer başlat
-            _timer = new Timer(60000); // 60 saniyede bir kontrol et
+            // Start timer to trigger backups every 60 seconds
+            _timer = new Timer(60000);
             _timer.Elapsed += OnTimerElapsed;
             _timer.Start();
 
-            // Başlatma log'u
             WriteLog("GPOMonitoringService started.");
         }
 
@@ -51,7 +51,6 @@ namespace GPOMonitoringService
                 _timer.Dispose();
             }
 
-            // Durdurma log'u
             WriteLog("GPOMonitoringService stopped.");
         }
 
@@ -59,7 +58,7 @@ namespace GPOMonitoringService
         {
             try
             {
-                BackupAllGPOs(); // Tüm GPO'ları yedekle
+                BackupAllGPOs();
             }
             catch (Exception ex)
             {
@@ -69,81 +68,57 @@ namespace GPOMonitoringService
 
         private void BackupAllGPOs()
         {
-            // PowerShell komutunu çalıştırarak tüm GPO'ları yedekle
-            var powershellCommand = $"Backup-GPO -All -Path \"{_backupPath}\"";
-            ExecutePowerShellCommand(powershellCommand);
-
-            // Yedeklenen GPO'lar için XML dosyasını güncelle
-            UpdateBackupHistory();
-
-            WriteLog("All GPOs backed up successfully.");
-        }
-
-        private void UpdateBackupHistory()
-        {
             try
             {
+                GPM gpm = new GPM();
+                GPMDomain domain = (GPMDomain)gpm.GetDomain("WORKGROUP", null, 0); // Replace "WORKGROUP" with your domain name
+                GPMSearchCriteria searchCriteria = gpm.CreateSearchCriteria();
+                GPMGPOCollection gpos = domain.SearchGPOs(searchCriteria);
+
                 var xdoc = XDocument.Load(_xmlPath);
 
-                foreach (var folder in Directory.GetDirectories(_backupPath))
+                foreach (GPMGPO gpo in gpos)
                 {
-                    var gpoName = Path.GetFileName(folder);
-                    var gpoBackupTime = DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
+                    string gpoBackupDir = Path.Combine(_backupPath, $"{gpo.DisplayName}_{DateTime.Now:yyyyMMddHHmmss}");
+                    Directory.CreateDirectory(gpoBackupDir);
 
-                    // GPO için yeni bir kayıt oluştur veya mevcut olanı güncelle
-                    var existingGpo = xdoc.Descendants("Gpo").FirstOrDefault(gpo => gpo.Element("Name")?.Value == gpoName);
+                    object progress = null;
+                    object cancel = null;
+
+                    gpo.Backup(gpoBackupDir, "Backup created by GPOMonitoringService", ref progress, out cancel);
+                    WriteLog($"Backed up GPO: {gpo.DisplayName}");
+
+                    // Update or add GPO record in XML
+                    var existingGpo = xdoc.Descendants("GPO")
+                        .FirstOrDefault(x => x.Element("Name")?.Value == gpo.DisplayName);
 
                     if (existingGpo == null)
                     {
-                        xdoc.Root.Add(new XElement("Gpo",
-                            new XElement("Name", gpoName),
-                            new XElement("LastModified", gpoBackupTime),
-                            new XElement("BackupPath", folder)));
+                        xdoc.Root.Add(new XElement("GPO",
+                            new XElement("Name", gpo.DisplayName),
+                            new XElement("LastModified", DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")),
+                            new XElement("BackupPath", gpoBackupDir)
+                        ));
                     }
                     else
                     {
-                        existingGpo.Element("LastModified")?.SetValue(gpoBackupTime);
-                        existingGpo.Element("BackupPath")?.SetValue(folder);
+                        existingGpo.Element("LastModified")?.SetValue(DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss"));
+                        existingGpo.Element("BackupPath")?.SetValue(gpoBackupDir);
                     }
                 }
 
                 xdoc.Save(_xmlPath);
+                WriteLog("All GPOs backed up and history updated successfully.");
             }
             catch (Exception ex)
             {
-                WriteLog($"Error updating XML: {ex.Message}");
-            }
-        }
-
-        private void ExecutePowerShellCommand(string command)
-        {
-            using (var process = new Process())
-            {
-                process.StartInfo.FileName = "powershell.exe";
-                process.StartInfo.Arguments = $"-NoProfile -ExecutionPolicy Bypass -Command \"{command}\"";
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.RedirectStandardError = true;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.CreateNoWindow = true;
-
-                process.Start();
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
-
-                if (!string.IsNullOrEmpty(error))
-                {
-                    WriteLog($"PowerShell Error: {error}");
-                }
-
-                WriteLog(output);
-                process.WaitForExit();
+                WriteLog($"Error during GPO backup: {ex.Message}");
             }
         }
 
         private void WriteLog(string message)
         {
-            // Log dosyasına yaz
-            var logPath = Path.Combine(_backupPath, "ServiceLog.txt");
+            string logPath = Path.Combine(_backupPath, "ServiceLog.txt");
             File.AppendAllText(logPath, $"{DateTime.Now}: {message}{Environment.NewLine}");
         }
     }

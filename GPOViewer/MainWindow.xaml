@@ -1,38 +1,38 @@
-﻿<Window x:Class="GPOViewer.MainWindow"
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="GPO Viewer" Height="500" Width="900">
-    <Grid>
-        <TabControl>
-            <TabItem Header="GPO Overview">
-                <Grid>
-                    <DataGrid x:Name="GpoDataGrid" AutoGenerateColumns="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="10" SelectionMode="Extended">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
-                            <DataGridTextColumn Header="Last Modified" Binding="{Binding LastModified}" Width="200" />
-                            <DataGridTextColumn Header="Backup Path" Binding="{Binding BackupPath}" Width="*" />
-                        </DataGrid.Columns>
-                    </DataGrid>
-                    <Button x:Name="RestoreButton" Content="Restore GPO" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10" Width="120" Click="RestoreButton_Click" />
-                </Grid>
-            </TabItem>
-            <TabItem Header="Compare">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*" />
-                        <ColumnDefinition Width="*" />
-                    </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0" Margin="10">
-                        <TextBlock Text="Left GPO" FontWeight="Bold" Margin="0,0,0,5" />
-                        <TextBox x:Name="LeftConfig" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="350" />
-                    </StackPanel>
-                    <StackPanel Grid.Column="1" Margin="10">
-                        <TextBlock Text="Right GPO" FontWeight="Bold" Margin="0,0,0,5" />
-                        <TextBox x:Name="RightConfig" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="350" />
-                    </StackPanel>
-                    <Button x:Name="CompareButton" Content="Compare" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10" Grid.ColumnSpan="2" Click="CompareButton_Click" />
-                </Grid>
-            </TabItem>
-        </TabControl>
-    </Grid>
-</Window>
+﻿    <Window x:Class="GPOViewer.MainWindow"
+            xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+            Title="GPO Viewer" Height="500" Width="900">
+        <Grid>
+            <TabControl>
+                <TabItem Header="GPO Overview">
+                    <Grid>
+                        <DataGrid x:Name="GpoDataGrid" AutoGenerateColumns="False" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Margin="10" SelectionMode="Extended">
+                            <DataGrid.Columns>
+                                <DataGridTextColumn Header="Name" Binding="{Binding Name}" Width="200" />
+                                <DataGridTextColumn Header="Last Modified" Binding="{Binding LastModified}" Width="200" />
+                                <DataGridTextColumn Header="Backup Path" Binding="{Binding BackupPath}" Width="*" />
+                            </DataGrid.Columns>
+                        </DataGrid>
+                        <Button x:Name="RestoreButton" Content="Restore GPO" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="10" Width="120" Click="RestoreButton_Click" />
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Compare">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="10">
+                            <TextBlock Text="Left GPO" FontWeight="Bold" Margin="0,0,0,5" />
+                            <TextBox x:Name="LeftConfig" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="350" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10">
+                            <TextBlock Text="Right GPO" FontWeight="Bold" Margin="0,0,0,5" />
+                            <TextBox x:Name="RightConfig" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Height="350" />
+                        </StackPanel>
+                        <Button x:Name="CompareButton" Content="Compare" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="10" Grid.ColumnSpan="2" Click="CompareButton_Click" />
+                    </Grid>
+                </TabItem>
+            </TabControl>
+        </Grid>
+    </Window>
